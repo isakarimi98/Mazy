@@ -1,0 +1,6 @@
+{
+  "name": "DocScan - اسکنر اسناد و مدارک",
+  "description": "اپلیکیشن نیتیو اندروید با کاتلین و Jetpack Compose برای اسکن، تصحیح برش و فتوکپی اسناد بدون نیاز به اینترنت",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

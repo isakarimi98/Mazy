@@ -1,0 +1,50 @@
+<resources>
+    <string name="app_name">اسکنر اسناد (DocScan)</string>
+    <string name="title_home">اسناد و فتوکپی‌ها</string>
+    <string name="search_hint">جستجو در اسناد...</string>
+    <string name="btn_new_scan">سند جدید</string>
+    <string name="action_camera">عکاسی با دوربین</string>
+    <string name="action_gallery">انتخاب از گالری</string>
+    <string name="action_settings">تنظیمات</string>
+    
+    <!-- Filters -->
+    <string name="filter_original">اصلی</string>
+    <string name="filter_photocopy">فتوکپی پرکنتراست</string>
+    <string name="filter_bw_office">سیاه و سفید اداری</string>
+    <string name="filter_whiteboard">وایتبورد / حذف سایه</string>
+    <string name="filter_magic_color">رنگی جادویی</string>
+
+    <!-- Crop & Edit -->
+    <string name="title_crop">تنظیم کادر برش</string>
+    <string name="crop_instruction">گوشه‌های کادر را روی لبه‌های سند تنظیم نمایید</string>
+    <string name="btn_auto_detect">تشخیص خودکار لبه</string>
+    <string name="btn_next">مرحله بعد</string>
+    <string name="btn_rotate">چرخش ۹۰ درجه</string>
+    <string name="btn_reset_crop">ریست کادر</string>
+
+    <!-- Preview & Export -->
+    <string name="title_preview">پیش‌نمایش و اعمال فیلتر</string>
+    <string name="btn_export_pdf">خروجی PDF</string>
+    <string name="btn_share">اشتراک‌گذاری</string>
+    <string name="btn_print">پرینت مستقیم</string>
+    <string name="btn_save">ذخیره سند</string>
+    
+    <!-- Export Dialog -->
+    <string name="export_dialog_title">تنظیمات خروجی سند</string>
+    <string name="pdf_quality">کیفیت فایل PDF</string>
+    <string name="quality_high">عالی (مناسب چاپ و بایگانی)</string>
+    <string name="quality_medium">متوسط (مناسب ارسال در پیام‌رسان‌ها)</string>
+    <string name="quality_low">فشرده (حداقل حجم ممکن)</string>
+    <string name="paper_size">اندازه کاغذ</string>
+    <string name="size_a4">کاغذ استاندارد A4</string>
+    <string name="size_letter">کاغذ استاندارد Letter</string>
+    <string name="dialog_cancel">انصراف</string>
+    <string name="dialog_confirm">تولید و دریافت PDF</string>
+    
+    <!-- Info & Status -->
+    <string name="empty_docs_title">هنوز سندی ثبت نکرده‌اید</string>
+    <string name="empty_docs_desc">برای شروع، روی دکمه دوربین یا سند جدید در پایین صفحه ضربه بزنید.</string>
+    <string name="pages_count">%1$d صفحه</string>
+    <string name="file_size">%1$s مگابایت</string>
+    <string name="offline_badge">۱۰۰٪ آفلاین و امن</string>
+</resources>
