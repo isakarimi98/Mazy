@@ -175,26 +175,26 @@ export default function App() {
               </div>
 
               {/* Resolution for GitHub Actions Issue & Performance */}
-              <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 text-right space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
-                  <CheckCircle2 className="w-5 h-5 text-amber-400" />
-                  <span>بررسی علت طولانی شدن (۳۰ دقیقه) و بهینه‌سازی سرعت به ۲ الی ۴ دقیقه:</span>
+              <div className="bg-emerald-950/30 border border-emerald-500/40 rounded-2xl p-4 text-right space-y-2">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <span>بررسی دقیق لاگ اجرای ران جدید و رفع ریشه‌ای مشکل:</span>
                 </div>
-                <div className="text-xs text-amber-200/90 leading-relaxed space-y-1.5">
+                <div className="text-xs text-emerald-200/90 leading-relaxed space-y-1.5">
                   <p>
-                    <strong>خیر، ۳۰ دقیقه به هیچ عنوان عادی نیست!</strong> بیلد یک اپلیکیشن کاتلین/Compose در گیت‌هاب اکشنز باید تنها <strong>۲ تا ۴ دقیقه</strong> زمان ببرد.
+                    <strong>نتیجه بررسی زمان:</strong> خوشبختانه طبق خروجی لاگ گیت‌هاب اکشنز ران جدید (<code className="font-mono text-emerald-300">Run 34612601324</code>)، زمان اجرا از ۳۰ دقیقه به <strong>تنها ۱ دقیقه و ۵۶ ثانیه</strong> کاهش یافته است (مشکل هنگ کردن کاملاً برطرف شده).
                   </p>
                   <p>
-                    <strong>علت گیر کردن در ران قبلی:</strong> دستورات ورودی نامتناهی یا تداخل لایسنس‌ها (مانند <code className="font-mono bg-black/40 px-1 py-0.5 rounded text-amber-300">yes | sdkmanager</code>) در محیط‌های CI بدون تعامل کاربر وارد چرخه بی‌نهایت (Hang) می‌شوند.
+                    <strong>ریشه توقف در ثانیه پایانی:</strong> در فایل منیفست اندروید (<code className="font-mono text-amber-300">AndroidManifest.xml</code>) به آیکون‌های اپلیکیشن (<code className="font-mono text-amber-300">@mipmap/ic_launcher</code> و <code className="font-mono text-amber-300">@mipmap/ic_launcher_round</code>) ارجاع داده شده بود اما این فایل‌های گرافیکی در پوشه منابع وجود نداشتند و سبب خطای کامپایل منابع (AAPT Resource Missing) شد.
                   </p>
                   <p>
-                    <strong>بهینه‌سازی‌های اعمال شده جهت بیلد فوق‌سریع:</strong>
+                    <strong>اصلاحات ریشه‌ای اعمال‌شده:</strong>
                   </p>
                   <ul className="list-disc list-inside space-y-0.5 text-slate-300 pr-2">
-                    <li>حذف تمامی مراحل مسدودکننده و زائد (لایسنس‌های اندروید در رانر اوبونتو گیت‌هاب از قبل فعال هستند).</li>
-                    <li>فعال‌سازی کامپایل موازی <code className="font-mono text-teal-300">org.gradle.parallel=true</code> در <code className="font-mono">gradle.properties</code> که سرعت کامپایل کاتلین را دو برابر می‌کند.</li>
-                    <li>تنظیم تایم‌اوت محافظتی ۱۰ دقیقه‌ای جهت جلوگیری از معطلی یا مصرف بی‌مورد منابع گیت‌هاب.</li>
-                    <li>استفاده بهینه از <code className="font-mono text-teal-300">setup-gradle@v4</code> بدون تداخل کَش با جاوا.</li>
+                    <li>تولید کامل آیکون‌های استاندارد وکتور و Adaptive در مسیرهای <code className="font-mono text-teal-300">res/mipmap-anydpi-v26/</code> و <code className="font-mono text-teal-300">res/drawable/</code>.</li>
+                    <li>بهینه‌سازی مخازن و تنظیم <code className="font-mono text-teal-300">repositoriesMode = PREFER_SETTINGS</code> در <code className="font-mono">settings.gradle.kts</code>.</li>
+                    <li>اصلاح پیکربندی <code className="font-mono text-teal-300">app/build.gradle.kts</code> و هماهنگ‌سازی کامل نام پکیج و FileProvider.</li>
+                    <li>افزودن لاگ‌های تفصیلی و ارسال گزارش عیب‌یابی در صورت بروز هرگونه خطای احتمالی در آینده.</li>
                   </ul>
                 </div>
               </div>

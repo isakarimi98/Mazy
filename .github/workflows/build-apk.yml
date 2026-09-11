@@ -33,7 +33,7 @@ jobs:
           gradle-version: '8.4'
           cache-read-only: false
 
-      - name: Prepare Gradlew Executable
+      - name: Prepare Gradlew Executable & Wrapper
         run: |
           sed -i 's/\r$//' ./gradlew || true
           chmod +x ./gradlew
@@ -54,3 +54,13 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 7
           if-no-files-found: error
+
+      - name: Upload Build Reports on Failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-failure-reports
+          path: |
+            app/build/reports/
+            **/build/reports/
+          if-no-files-found: ignore
