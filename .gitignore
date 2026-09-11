@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Gradle & Android build exclusions
+.gradle/
+app/build/
+local.properties
+*.apk
+
+# Always keep Gradle Wrapper JAR
+!gradle/wrapper/gradle-wrapper.jar
+

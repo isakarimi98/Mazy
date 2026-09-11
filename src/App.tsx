@@ -174,6 +174,28 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Resolution for GitHub Actions Issue */}
+              <div className="bg-amber-950/30 border border-amber-500/40 rounded-2xl p-4 text-right space-y-2">
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-sm">
+                  <CheckCircle2 className="w-5 h-5 text-amber-400" />
+                  <span>علت توقف بیلد در لینک گیت‌هاب و راهکار اعمال شده:</span>
+                </div>
+                <div className="text-xs text-amber-200/90 leading-relaxed space-y-1">
+                  <p>
+                    <strong>علت خطا:</strong> در اجرای گیت‌هاب اکشنز ارسالی، فایل باینری <code className="font-mono bg-black/40 px-1 py-0.5 rounded text-amber-300">gradle-wrapper.jar</code> در مخزن وجود نداشت یا توسط گیت نادیده گرفته شده بود که موجب خطای <code className="font-mono text-amber-300">Could not find or load main class org.gradle.wrapper.GradleWrapperMain</code> شد.
+                  </p>
+                  <p>
+                    <strong>راهکارهای اعمال شده در پروژه:</strong>
+                  </p>
+                  <ul className="list-disc list-inside space-y-0.5 text-slate-300 pr-2">
+                    <li>فایل باینری رسمی <code className="font-mono text-teal-300">gradle/wrapper/gradle-wrapper.jar</code> دانلود و در پروژه قرار گرفت.</li>
+                    <li>قانون استثنای <code className="font-mono text-teal-300">!gradle/wrapper/gradle-wrapper.jar</code> در <code className="font-mono">.gitignore</code> اضافه شد.</li>
+                    <li>مرحله دانلود خودکار فایل در ورک‌فلو گیت‌هاب اضافه شد تا در صورت نبودن در مخزن، به طور هوشمند از سرور رسمی گریدل دریافت شود.</li>
+                    <li>اکشن رسمی <code className="font-mono text-teal-300">gradle/actions/setup-gradle@v4</code> جهت بیلد پایدار و بدون وابستگی به اجرا اضافه شد.</li>
+                  </ul>
+                </div>
+              </div>
+
               <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
                 <p>
                   این خط لوله با هر بار ارسال کد (<code className="text-teal-300 font-mono">push</code>) یا ایجاد پول ریکوئست به مخزن، روی سرور لینوکس گیت‌هاب اجرا می‌شود و فایل نصبی را آماده می‌کند:
