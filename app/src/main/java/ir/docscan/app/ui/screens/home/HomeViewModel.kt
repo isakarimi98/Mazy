@@ -1,13 +1,14 @@
 package ir.docscan.app.ui.screens.home
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.net.Uri
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import ir.docscan.app.data.mock.SampleDocs
 import ir.docscan.app.data.model.ScannedDoc
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import ir.docscan.app.data.processor.ScanSessionManager
+import ir.docscan.app.data.repository.DocumentRepository
+import ir.docscan.app.data.util.ShamsiDateHelper
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
@@ -15,20 +16,25 @@ data class HomeUiState(
     val searchQuery: String = "",
     val isSearchActive: Boolean = false,
     val showNewScanSheet: Boolean = false,
-    val selectedDocForAction: ScannedDoc? = null
+    val selectedDocForAction: ScannedDoc? = null,
+    val docToRename: ScannedDoc? = null,
+    val docToDelete: ScannedDoc? = null
 )
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = DocumentRepository.getInstance(application)
+
     private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
-
-    init {
-        loadDocuments()
-    }
-
-    private fun loadDocuments() {
-        _uiState.update { it.copy(documents = SampleDocs.initialDocuments) }
-    }
+    val uiState: StateFlow<HomeUiState> = combine(
+        _uiState,
+        repository.documents
+    ) { state, repoDocs ->
+        state.copy(documents = repoDocs)
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = HomeUiState()
+    )
 
     fun onSearchQueryChanged(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
@@ -48,17 +54,52 @@ class HomeViewModel : ViewModel() {
     }
 
     fun toggleFavorite(docId: String) {
-        _uiState.update { state ->
-            val updated = state.documents.map { doc ->
-                if (doc.id == docId) doc.copy(isFavorite = !doc.isFavorite) else doc
+        viewModelScope.launch {
+            repository.toggleFavorite(docId)
+        }
+    }
+
+    fun setDocToRename(doc: ScannedDoc?) {
+        _uiState.update { it.copy(docToRename = doc) }
+    }
+
+    fun setDocToDelete(doc: ScannedDoc?) {
+        _uiState.update { it.copy(docToDelete = doc) }
+    }
+
+    fun renameDocument(docId: String, newTitle: String) {
+        viewModelScope.launch {
+            if (newTitle.isNotBlank()) {
+                repository.renameDocument(docId, newTitle.trim())
             }
-            state.copy(documents = updated)
+            _uiState.update { it.copy(docToRename = null) }
         }
     }
 
     fun deleteDocument(docId: String) {
-        _uiState.update { state ->
-            state.copy(documents = state.documents.filter { it.id != docId })
+        viewModelScope.launch {
+            repository.deleteDocument(docId)
+            _uiState.update { it.copy(docToDelete = null) }
+        }
+    }
+
+    fun onMediaSelected(uri: Uri, isCamera: Boolean, onReadyToNavigate: () -> Unit) {
+        viewModelScope.launch {
+            val title = if (isCamera) {
+                "اسکن دوربین ${ShamsiDateHelper.getCurrentShamsiDate()}"
+            } else {
+                "سند گالری ${ShamsiDateHelper.getCurrentShamsiDate()}"
+            }
+            ScanSessionManager.setCapturedImage(getApplication(), uri, title)
+            _uiState.update { it.copy(showNewScanSheet = false) }
+            onReadyToNavigate()
+        }
+    }
+
+    fun openExistingDoc(doc: ScannedDoc, onReadyToNavigate: () -> Unit) {
+        viewModelScope.launch {
+            ScanSessionManager.loadExistingDoc(getApplication(), doc)
+            onReadyToNavigate()
         }
     }
 }

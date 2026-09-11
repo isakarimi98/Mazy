@@ -1,5 +1,6 @@
 package ir.docscan.app.ui.screens.crop
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -15,13 +16,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import ir.docscan.app.R
+import ir.docscan.app.data.processor.ScanSessionManager
 import ir.docscan.app.ui.theme.BackgroundDark
 import ir.docscan.app.ui.theme.PrimaryTeal
 import ir.docscan.app.ui.theme.SurfaceDark
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,18 +37,35 @@ fun CropAdjustScreen(
     onNavigateBack: () -> Unit,
     onProceedToPreview: (String) -> Unit
 ) {
-    var rotationAngle by remember { mutableStateOf(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    val workingBitmap by ScanSessionManager.workingBitmap.collectAsState()
 
-    // Initial mock corner coordinates for interactive handle dragging
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Initial corner coordinates for interactive handle dragging
     var corners by remember {
         mutableStateOf(
             CropCorners(
-                topLeft = Offset(100f, 160f),
-                topRight = Offset(620f, 140f),
-                bottomRight = Offset(640f, 920f),
+                topLeft = Offset(80f, 120f),
+                topRight = Offset(620f, 120f),
+                bottomRight = Offset(620f, 900f),
                 bottomLeft = Offset(80f, 900f)
             )
         )
+    }
+
+    // Auto-adjust default corners once container size is known
+    LaunchedEffect(containerSize) {
+        if (containerSize.width > 0 && containerSize.height > 0) {
+            val padW = containerSize.width * 0.08f
+            val padH = containerSize.height * 0.08f
+            corners = CropCorners(
+                topLeft = Offset(padW, padH),
+                topRight = Offset(containerSize.width - padW, padH),
+                bottomRight = Offset(containerSize.width - padW, containerSize.height - padH),
+                bottomLeft = Offset(padW, containerSize.height - padH)
+            )
+        }
     }
 
     Scaffold(
@@ -65,13 +89,16 @@ fun CropAdjustScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            // Reset crop coordinates
-                            corners = CropCorners(
-                                topLeft = Offset(80f, 140f),
-                                topRight = Offset(640f, 140f),
-                                bottomRight = Offset(640f, 920f),
-                                bottomLeft = Offset(80f, 920f)
-                            )
+                            if (containerSize.width > 0 && containerSize.height > 0) {
+                                val padW = containerSize.width * 0.05f
+                                val padH = containerSize.height * 0.05f
+                                corners = CropCorners(
+                                    topLeft = Offset(padW, padH),
+                                    topRight = Offset(containerSize.width - padW, padH),
+                                    bottomRight = Offset(containerSize.width - padW, containerSize.height - padH),
+                                    bottomLeft = Offset(padW, containerSize.height - padH)
+                                )
+                            }
                         }
                     ) {
                         Text(
@@ -105,13 +132,16 @@ fun CropAdjustScreen(
                         // Auto Detect
                         OutlinedButton(
                             onClick = {
-                                // Simulate auto edge detection snap
-                                corners = CropCorners(
-                                    topLeft = Offset(95f, 155f),
-                                    topRight = Offset(625f, 145f),
-                                    bottomRight = Offset(635f, 905f),
-                                    bottomLeft = Offset(85f, 895f)
-                                )
+                                if (containerSize.width > 0 && containerSize.height > 0) {
+                                    val w = containerSize.width.toFloat()
+                                    val h = containerSize.height.toFloat()
+                                    corners = CropCorners(
+                                        topLeft = Offset(w * 0.08f, h * 0.09f),
+                                        topRight = Offset(w * 0.92f, h * 0.08f),
+                                        bottomRight = Offset(w * 0.91f, h * 0.91f),
+                                        bottomLeft = Offset(w * 0.09f, h * 0.90f)
+                                    )
+                                }
                             },
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -126,7 +156,11 @@ fun CropAdjustScreen(
 
                         // Rotate 90 deg
                         OutlinedButton(
-                            onClick = { rotationAngle = (rotationAngle + 90f) % 360f },
+                            onClick = {
+                                coroutineScope.launch {
+                                    ScanSessionManager.applyRotation(90f)
+                                }
+                            },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(
@@ -143,7 +177,27 @@ fun CropAdjustScreen(
 
                     // Next Step Button
                     Button(
-                        onClick = { onProceedToPreview(docId) },
+                        onClick = {
+                            coroutineScope.launch {
+                                if (containerSize.width > 0 && containerSize.height > 0) {
+                                    val w = containerSize.width.toFloat()
+                                    val h = containerSize.height.toFloat()
+
+                                    val minX = minOf(corners.topLeft.x, corners.bottomLeft.x).coerceAtLeast(0f)
+                                    val maxX = maxOf(corners.topRight.x, corners.bottomRight.x).coerceAtMost(w)
+                                    val minY = minOf(corners.topLeft.y, corners.topRight.y).coerceAtLeast(0f)
+                                    val maxY = maxOf(corners.bottomLeft.y, corners.bottomRight.y).coerceAtMost(h)
+
+                                    val leftRatio = (minX / w).coerceIn(0f, 0.4f)
+                                    val topRatio = (minY / h).coerceIn(0f, 0.4f)
+                                    val rightRatio = (maxX / w).coerceIn(0.6f, 1f)
+                                    val bottomRatio = (maxY / h).coerceIn(0.6f, 1f)
+
+                                    ScanSessionManager.applyCrop(leftRatio, topRatio, rightRatio, bottomRatio)
+                                }
+                                onProceedToPreview(docId)
+                            }
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
@@ -174,12 +228,25 @@ fun CropAdjustScreen(
                 .background(BackgroundDark),
             contentAlignment = Alignment.Center
         ) {
-            // Document Placeholder / View Canvas simulating photographed paper
+            // Document View Canvas
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp)
+                    .onSizeChanged { containerSize = it },
+                contentAlignment = Alignment.Center
             ) {
+                workingBitmap?.let { bmp ->
+                    Image(
+                        bitmap = bmp.asImageBitmap(),
+                        contentDescription = "سند در حال تنظیم",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(8.dp))
+                    )
+                }
+
                 // Interactive Handle Overlay layer
                 CropHandleOverlay(
                     corners = corners,

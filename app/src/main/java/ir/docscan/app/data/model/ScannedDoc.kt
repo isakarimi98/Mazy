@@ -10,8 +10,10 @@ data class ScannedDoc(
     val title: String,
     val dateShamsi: String,
     val pageCount: Int = 1,
-    val fileSizeFormatted: String,
+    val fileSizeFormatted: String = "۱.۲ مگابایت",
     val thumbnailUri: String? = null,
+    val imagePath: String? = null,
     val activeFilter: DocFilterType = DocFilterType.PHOTOCOPY,
-    val isFavorite: Boolean = false
+    val isFavorite: Boolean = false,
+    val createdAtMillis: Long = System.currentTimeMillis()
 )

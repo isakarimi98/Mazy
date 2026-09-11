@@ -5,31 +5,36 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import ir.docscan.app.data.model.ScannedDoc
 import ir.docscan.app.ui.theme.AccentAmber
 import ir.docscan.app.ui.theme.PrimaryTeal
 import ir.docscan.app.ui.theme.PrimaryTealContainer
+import java.io.File
 
 @Composable
 fun DocItemCard(
     doc: ScannedDoc,
     onClick: () -> Unit,
     onFavoriteToggle: () -> Unit,
-    onMenuClick: () -> Unit,
+    onRename: () -> Unit,
+    onDelete: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -46,7 +51,7 @@ fun DocItemCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Document Thumbnail / Icon Preview Box
+            // Document Thumbnail
             Box(
                 modifier = Modifier
                     .size(64.dp)
@@ -54,12 +59,31 @@ fun DocItemCard(
                     .background(PrimaryTealContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Description,
-                    contentDescription = null,
-                    tint = PrimaryTeal,
-                    modifier = Modifier.size(32.dp)
-                )
+                val thumbFile = doc.thumbnailUri?.let { File(it) }
+                val imageFile = doc.imagePath?.let { File(it) }
+
+                if (thumbFile != null && thumbFile.exists()) {
+                    AsyncImage(
+                        model = thumbFile,
+                        contentDescription = doc.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (imageFile != null && imageFile.exists()) {
+                    AsyncImage(
+                        model = imageFile,
+                        contentDescription = doc.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Description,
+                        contentDescription = null,
+                        tint = PrimaryTeal,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(14.dp))
@@ -141,13 +165,52 @@ fun DocItemCard(
                 )
             }
 
-            // Options Menu Button
-            IconButton(onClick = onMenuClick) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = "گزینه‌های سند",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            // Options Menu Button & Dropdown
+            Box {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "گزینه‌های سند",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("اشتراک‌گذاری") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onShare()
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("تغییر نام") },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onRename()
+                        }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("حذف سند", color = MaterialTheme.colorScheme.error) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onDelete()
+                        }
+                    )
+                }
             }
         }
     }

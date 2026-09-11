@@ -1,5 +1,12 @@
 package ir.docscan.app.ui.screens.home
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -18,13 +25,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import ir.docscan.app.R
+import ir.docscan.app.data.util.ShareHelper
 import ir.docscan.app.ui.screens.home.components.DocItemCard
 import ir.docscan.app.ui.theme.PrimaryTeal
 import ir.docscan.app.ui.theme.StatusGreen
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,7 +45,45 @@ fun HomeScreen(
     onNavigateToCrop: (String) -> Unit,
     onNavigateToPreview: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val state by viewModel.uiState.collectAsState()
+
+    var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+    var renameInputText by remember { mutableStateOf("") }
+
+    // Launcher: Camera Take Picture
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && tempCameraUri != null) {
+            viewModel.onMediaSelected(tempCameraUri!!, isCamera = true) {
+                onNavigateToCrop("doc-new")
+            }
+        }
+    }
+
+    // Launcher: Camera Permission Request
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchCamera(context) { uri ->
+                tempCameraUri = uri
+                takePictureLauncher.launch(uri)
+            }
+        }
+    }
+
+    // Launcher: Pick Visual Media (Gallery)
+    val pickGalleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onMediaSelected(uri, isCamera = false) {
+                onNavigateToCrop("doc-new")
+            }
+        }
+    }
 
     val filteredDocs = remember(state.documents, state.searchQuery) {
         if (state.searchQuery.isBlank()) {
@@ -93,12 +143,6 @@ fun HomeScreen(
                         Icon(
                             imageVector = if (state.isSearchActive) Icons.Default.Close else Icons.Default.Search,
                             contentDescription = "جستجو"
-                        )
-                    }
-                    IconButton(onClick = { /* Open Settings dialog or screen */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "تنظیمات"
                         )
                     }
                 },
@@ -181,9 +225,25 @@ fun HomeScreen(
                     items(filteredDocs, key = { it.id }) { doc ->
                         DocItemCard(
                             doc = doc,
-                            onClick = { onNavigateToPreview(doc.id) },
+                            onClick = {
+                                viewModel.openExistingDoc(doc) {
+                                    onNavigateToPreview(doc.id)
+                                }
+                            },
                             onFavoriteToggle = { viewModel.toggleFavorite(doc.id) },
-                            onMenuClick = { /* Show item bottom sheet or popup menu */ }
+                            onRename = {
+                                renameInputText = doc.title
+                                viewModel.setDocToRename(doc)
+                            },
+                            onDelete = {
+                                viewModel.setDocToDelete(doc)
+                            },
+                            onShare = {
+                                val imgFile = doc.imagePath?.let { File(it) }
+                                if (imgFile != null && imgFile.exists()) {
+                                    ShareHelper.shareImage(context, imgFile, doc.title)
+                                }
+                            }
                         )
                     }
                 }
@@ -223,7 +283,19 @@ fun HomeScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
                     onClick = {
                         viewModel.showNewScanOptions(false)
-                        onNavigateToCrop("doc-new")
+                        val hasCameraPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (hasCameraPermission) {
+                            launchCamera(context) { uri ->
+                                tempCameraUri = uri
+                                takePictureLauncher.launch(uri)
+                            }
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
                     }
                 ) {
                     Row(
@@ -254,7 +326,7 @@ fun HomeScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
-                                text = "اسکن با تشخیص زاویه خودکار و تصحیح نور",
+                                text = "اسکن با بهینه‌سازی نور و تفکیک زوایا",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -271,7 +343,9 @@ fun HomeScreen(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                     onClick = {
                         viewModel.showNewScanOptions(false)
-                        onNavigateToCrop("doc-new")
+                        pickGalleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
                     }
                 ) {
                     Row(
@@ -313,5 +387,72 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(24.dp))
             }
         }
+    }
+
+    // Rename Dialog
+    state.docToRename?.let { doc ->
+        AlertDialog(
+            onDismissRequest = { viewModel.setDocToRename(null) },
+            title = { Text("تغییر نام سند", fontWeight = FontWeight.Bold) },
+            text = {
+                OutlinedTextField(
+                    value = renameInputText,
+                    onValueChange = { renameInputText = it },
+                    label = { Text("عنوان جدید") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.renameDocument(doc.id, renameInputText) },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryTeal)
+                ) {
+                    Text("ذخیره")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setDocToRename(null) }) {
+                    Text("انصراف")
+                }
+            }
+        )
+    }
+
+    // Delete Confirmation Dialog
+    state.docToDelete?.let { doc ->
+        AlertDialog(
+            onDismissRequest = { viewModel.setDocToDelete(null) },
+            title = { Text("حذف سند", fontWeight = FontWeight.Bold) },
+            text = { Text("آیا از حذف سند «${doc.title}» اطمینان دارید؟ این عمل غیرقابل بازگشت است.") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.deleteDocument(doc.id) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("حذف")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setDocToDelete(null) }) {
+                    Text("انصراف")
+                }
+            }
+        )
+    }
+}
+
+private fun launchCamera(context: Context, onUriReady: (Uri) -> Unit) {
+    try {
+        val cacheDir = File(context.cacheDir, "camera").apply { mkdirs() }
+        val imageFile = File(cacheDir, "scan_${System.currentTimeMillis()}.jpg")
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+        onUriReady(uri)
+    } catch (e: Exception) {
+        e.printStackTrace()
     }
 }
