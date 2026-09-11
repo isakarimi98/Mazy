@@ -7,15 +7,15 @@ on:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build Debug APK
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-
-    env:
-      ANDROID_HOME: /usr/local/lib/android/sdk
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3072m -Dorg.gradle.daemon=false"
+    timeout-minutes: 10
 
     steps:
       - name: Checkout Code
@@ -26,53 +26,31 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
-
-      - name: Fix Line Endings and Permissions
-        run: |
-          if [ -f "./gradlew" ]; then
-            sed -i 's/\r$//' ./gradlew
-            chmod +x ./gradlew
-          fi
-
-      - name: Ensure Gradle Wrapper JAR Exists
-        run: |
-          mkdir -p gradle/wrapper
-          if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Downloading gradle-wrapper.jar..."
-            curl -sS -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar
-          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.4'
-          validate-wrappers: false
+          cache-read-only: false
 
-      - name: Accept Android SDK Licenses
+      - name: Prepare Gradlew Executable
         run: |
-          if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
-            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          elif command -v sdkmanager >/dev/null 2>&1; then
-            yes | sdkmanager --licenses || true
+          sed -i 's/\r$//' ./gradlew || true
+          chmod +x ./gradlew
+          mkdir -p gradle/wrapper
+          if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "Downloading gradle-wrapper.jar fallback..."
+            curl -sS -L -o gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar
           fi
 
-      - name: Build Debug APK with Gradle
-        run: |
-          if [ -x "./gradlew" ]; then
-            ./gradlew assembleDebug --stacktrace --no-daemon
-          else
-            gradle assembleDebug --stacktrace --no-daemon
-          fi
-
-      - name: Locate Generated APK
-        run: |
-          echo "Listing generated APK files:"
-          find app/build/outputs/apk -name "*.apk" -print
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
+        if: success()
         with:
-          name: app-debug.apk
+          name: app-debug
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
           if-no-files-found: error
